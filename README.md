@@ -11,3 +11,9 @@ After thorough testing of multiple algorithms, **Random Forest Regression** was 
 
 ## Why Random Forest?
 Various machine learning models were evaluated, but **Random Forest Regression** consistently yielded the highest prediction accuracy, making it the best choice for this project.
+
+
+Project is Done by 
+1. Howard Nikhil J - 715523106303
+2. Logeshwaran K - 715523106051
+3. Harish V - 715523106037
