@@ -1,14 +1,236 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Prediction Result</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AQI Prediction Result</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.5/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1e3a8a, #06b6d4);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+      padding: 30px;
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h2 {
+      color: #1e40af;
+      font-size: 2rem;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .result {
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      font-size: 1.6rem;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .error {
+      background: linear-gradient(90deg, #fee2e2, #fecaca);
+      color: #991b1b;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .chart-container {
+      width: 300px;
+      height: 300px;
+      margin-bottom: 30px;
+      position: relative;
+    }
+
+    #aqi-chart {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .center-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      font-weight: bold;
+      color: #111;
+    }
+
+    .heatmap-bar {
+      height: 20px;
+      width: 100%;
+      border-radius: 5px;
+      background: linear-gradient(to right, 
+        #00e400 0%, 
+        #ffff00 20%, 
+        #ff7e00 40%, 
+        #ff0000 60%, 
+        #8f3f97 80%, 
+        #7e0023 100%);
+      margin-top: 10px;
+      position: relative;
+    }
+
+    .heatmap-labels {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-top: 5px;
+    }
+
+    .btn-container {
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    a {
+      display: inline-block;
+      padding: 12px 24px;
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: transform 0.2s ease, background 0.3s ease;
+    }
+
+    a:hover {
+      background: linear-gradient(90deg, #1e40af, #0284c7);
+      transform: scale(1.05);
+    }
+
+    @media (max-width: 600px) {
+      .chart-container {
+        width: 200px;
+        height: 200px;
+      }
+
+      .center-text {
+        font-size: 1.4rem;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h2>Air Quality Prediction Result</h2>
-    <p><strong>Predicted AQI Value:</strong> {{ prediction[0] }}</p>
-    
+  <div class="container">
+    <h2>AQI Prediction Result</h2>
 
-    <br>
-    <a href="/">Back to Home</a>
+    {% if prediction is not none %}
+      <div class="result" id="result-box">
+        Predicted AQI: <span id="predicted-value">{{ prediction | round(2) }}</span>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="aqi-chart"></canvas>
+        <div class="center-text" id="chart-center">{{ prediction | round(0) }}</div>
+      </div>
+
+      <div class="heatmap-bar"></div>
+      <div class="heatmap-labels">
+        <span>0</span><span>50</span><span>100</span><span>150</span><span>200</span><span>300</span><span>500</span>
+      </div>
+    {% else %}
+      <div class="error">
+        <p>Error: {{ error }}</p>
+      </div>
+    {% endif %}
+
+    <div class="btn-container">
+      <a href="/">Back to Form</a>
+    </div>
+  </div>
+
+  {% if prediction is not none %}
+  <script>
+    const prediction = {{ prediction }};
+    const resultBox = document.getElementById('result-box');
+    const predictedValue = document.getElementById('predicted-value');
+
+    const aqiCategories = [
+      { range: 50, color: '#00e400' },
+      { range: 100, color: '#ffff00' },
+      { range: 150, color: '#ff7e00' },
+      { range: 200, color: '#ff0000' },
+      { range: 300, color: '#8f3f97' },
+      { range: 500, color: '#7e0023' }
+    ];
+
+    function getAQIColor(value) {
+      for (let i = 0; i < aqiCategories.length; i++) {
+        if (value <= aqiCategories[i].range) {
+          return aqiCategories[i].color;
+        }
+      }
+      return '#7e0023';
+    }
+
+    function getContrastYIQ(hexcolor){
+      hexcolor = hexcolor.replace('#', '');
+      const r = parseInt(hexcolor.substr(0,2),16);
+      const g = parseInt(hexcolor.substr(2,2),16);
+      const b = parseInt(hexcolor.substr(4,2),16);
+      const yiq = ((r*299)+(g*587)+(b*114))/1000;
+      return (yiq >= 128) ? '#111' : '#fff';
+    }
+
+    const bgColor = getAQIColor(prediction);
+    resultBox.style.backgroundColor = bgColor;
+    resultBox.style.color = getContrastYIQ(bgColor);
+
+    const ctx = document.getElementById('aqi-chart').getContext('2d');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['AQI', 'Remaining'],
+        datasets: [{
+          data: [prediction, 500 - prediction],
+          backgroundColor: [bgColor, '#e5e7eb'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        cutout: '70%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.label}: ${context.raw} AQI`;
+              }
+            }
+          }
+        }
+      }
+    });
+  </script>
+  {% endif %}
 </body>
 </html>
